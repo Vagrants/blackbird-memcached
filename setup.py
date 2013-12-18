@@ -15,7 +15,4 @@ setup(
     author='ARASHI, Jumpei',
     author_email='jumpei.arashi@arashike.com',
     url='http://ghe.amb.ca.local/Unified/blackbird-memcached',
-    data_files=[
-        ('/opt/blackbird/plugins', ['memcached.py'])
-    ]
 )

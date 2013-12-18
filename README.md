@@ -3,16 +3,13 @@ blackbird-haproxy
 
 Get result of following command(not shell command) result.
 
-* show errors
-* show info
-* show stat
+* stats
 
-Suppoted??
+config file
+-----------
 
-* show sess
-* show table
+Pleases see the "sample" directory.
 
-For getting stats
------------------
-
-* set `stats socket YOUR_STATS_SOCKET_LOCATION mode 777` in HAProxy config file.
+```bash
+mv sample/memcached.cfg /etc/blackbird/conf.d
+```
