@@ -14,5 +14,5 @@ setup(
     ),
     author='ARASHI, Jumpei',
     author_email='jumpei.arashi@arashike.com',
-    url='http://ghe.amb.ca.local/Unified/blackbird-memcached',
+    url='https://github.com/Vagrants/blackbird-memcached',
 )

@@ -16,9 +16,9 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 Prefix: %{_prefix}
 BuildArch: noarch
 Vendor: ARASHI, Jumpei <jumpei.arashi@arashike.com>
-Packager: ARASHI, Jumpei<jumpei.arashi@arashike.com>
+Packager: ARASHI, Jumpei <jumpei.arashi@arashike.com>
 Requires: blackbird
-Url: http://ghe.amb.ca.local/Unified/blackbird-memcached
+Url: https://github.com/Vagrants/blackbird-memcached
 BuildRequires:  python-setuptools
 
 %description
