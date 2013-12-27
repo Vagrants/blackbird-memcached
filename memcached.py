@@ -3,7 +3,6 @@
 u"""\"memcached-tool 127.0.0.1:11211 stats\" to ZabbixServer."""
 
 import telnetlib
-import math
 from datetime import datetime
 
 from blackbird.plugins import base
@@ -17,8 +16,6 @@ class ConcreteJob(base.JobBase):
 
     def __init__(self, options, queue=None, logger=None):
         super(ConcreteJob, self).__init__(options, queue, logger)
-        self.set_time = 0.0
-        self.get_time = 0.0
 
     def looped_method(self):
         """
@@ -34,17 +31,6 @@ class ConcreteJob(base.JobBase):
 
         conn.write('stats\r\n')
         result = conn.read_until('END').splitlines()
-
-        with base.Timer() as timer:
-            self._set_zabbix_check(conn=conn)
-
-        self.set_time = str(round(timer.sec,4))
-
-        with base.Timer() as timer:
-            self._get_response_time(conn=conn)
-
-        self.get_time = str(round(timer.sec,4))
-
         conn.close()
 
         # send stats data
@@ -63,22 +49,35 @@ class ConcreteJob(base.JobBase):
             )
 
         # send response time
-        set_key = 'set_response_time'
-        self._enqueue(set_key, self.set_time, self.options['hostname'])
+        key = 'set_response_time'
+        value = self._set_command_response_time(
+            host=self.options['host'],
+            port=self.options['port'],
+            timeout=self.options['timeout'],
+            profile_include_conn_establish=
+            self.options['profile_include_conn_establish']
+        )
+        self._enqueue(key, value, self.options['hostname'])
         self.logger.debug(
             ('Inserted to queue memcached.{key}:{value}'
-             ''.format(key=set_key, value=self.set_time)
+             ''.format(key=key, value=value)
              )
         )
 
-        get_key = 'get_response_time'
-        self._enqueue(get_key, self.get_time, self.options['hostname'])
+        key = 'get_response_time'
+        value = self._get_command_response_time(
+            host=self.options['host'],
+            port=self.options['port'],
+            timeout=self.options['timeout'],
+            profile_include_conn_establish=
+            self.options['profile_include_conn_establish']
+        )
+        self._enqueue(key, value, self.options['hostname'])
         self.logger.debug(
             ('Inserted to queue memcached.{key}:{value}'
-             ''.format(key=get_key, value=self.get_time)
+             ''.format(key=key, value=value)
              )
         )
-        
 
     def _enqueue(self, item_key, item_value, item_host):
         item = MemcachedItem(
@@ -88,29 +87,92 @@ class ConcreteJob(base.JobBase):
         )
         self.queue.put(item, block=False)
 
-    def _set_zabbix_check(self, conn, key='__zabbix_check'):
+    def _set_command_response_time(self, host, port, timeout=10,
+                                   key='__zabbix_check',
+                                   profile_include_conn_establish=False):
         """
-        Set zabbix_check value for checking response time.
-        value length is 14(hard-corded).
+        Get "set" command response time.
         """
 
         value = datetime.now()
         value = value.strftime('%Y%m%d%H%M%S')
+        length = len(value)
         value = '{0}\r\n'.format(value)
-        data = 'set {0} 0 10 14\r\n'.format(key)
+        data = (
+            'set {key} 0 86400 {length}\r\n'
+            ''.format(key=key, length=length)
+        )
 
-        conn.write(data)
-        conn.write(value)
-        conn.read_until('STORED')
+        if profile_include_conn_establish:
+            with base.Timer() as timer:
+                conn = telnetlib.Telnet()
+                conn.open(
+                    host=host,
+                    port=port,
+                    timeout=timeout
+                )
+                conn.write(data)
+                conn.write(value)
+                data = conn.read_some()
+                conn.close()
 
-    def _get_response_time(self, conn, key='__zabbix_check'):
+        else:
+            conn = telnetlib.Telnet()
+            conn.open(
+                host=host,
+                port=port,
+                timeout=timeout
+            )
+            with base.Timer() as timer:
+                conn.write(data)
+                conn.write(value)
+                data = conn.read_some()
+            conn.close()
+
+        if 'STORED' in data:
+            return timer.sec
+        elif 'ERROR' in data:
+            return None
+        else:
+            return None
+
+    def _get_command_response_time(self, host, port, timeout=10,
+                                   key='__zabbix_check',
+                                   profile_include_conn_establish=False):
         """
-        Get memcached response time.
+        Get "get" command response time.
         """
 
         data = 'get {0}\r\n'.format(key)
-        conn.write(data)
-        conn.read_until('END')
+
+        if profile_include_conn_establish:
+            with base.Timer() as timer:
+                conn = telnetlib.Telnet()
+                conn.open(
+                    host=host,
+                    port=port,
+                    timeout=timeout
+                )
+                conn.write(data)
+                data = conn.read_some()
+                conn.close()
+
+        else:
+            conn = telnetlib.Telnet()
+            conn.open(
+                host=host,
+                port=port,
+                timeout=timeout
+            )
+            with base.Timer() as timer:
+                conn.write(data)
+                data = conn.read_some()
+            conn.close()
+
+        if not 'ERROR' in data:
+            return timer.sec
+        else:
+            return None
 
 
 class MemcachedItem(base.ItemBase):
@@ -161,6 +223,7 @@ class Validator(base.ValidatorBase):
             "port = integer(0, 65535, default=11211)",
             "timeout = integer(default=10)",
             "hostname = string(default={0})".format(self.gethostname()),
+            "profile_include_conn_establish = boolean(default=False)",
         )
         return self.__spec
 
@@ -171,14 +234,16 @@ if __name__ == '__main__':
         'port': 11211,
         'timeout': 1
     }
-    MEMCACHED_CONN = telnetlib.Telnet()
-    MEMCACHED_CONN.open(
+    MEMCACHED_JOB = ConcreteJob(options=OPTIONS)
+    RESULT = MEMCACHED_JOB._set_command_response_time(
         host=OPTIONS['host'],
         port=OPTIONS['port'],
         timeout=OPTIONS['timeout']
     )
-    MEMCACHED_JOB = ConcreteJob(options=OPTIONS)
-    print MEMCACHED_JOB._set_zabbix_check(conn=MEMCACHED_CONN)
-    print MEMCACHED_JOB._get_response_time(conn=MEMCACHED_CONN)
-    MEMCACHED_CONN.close()
-
+    print('"set" command response time: {0}sec'.format(RESULT))
+    RESULT = MEMCACHED_JOB._get_command_response_time(
+        host=OPTIONS['host'],
+        port=OPTIONS['port'],
+        timeout=OPTIONS['timeout']
+    )
+    print('"get" command response time: {0}sec'.format(RESULT))
