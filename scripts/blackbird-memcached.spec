@@ -35,7 +35,7 @@ python setup.py build
 python setup.py install --root=$RPM_BUILD_ROOT --record=INSTALLED_FILES
 
 install -dm 0755 $RPM_BUILD_ROOT%{include_dir}
-install -p -m 0644 $RPM_BUILD_ROOT%{include_dir}/memcached.cfg
+install -p -m 0644 scripts/memcached.cfg $RPM_BUILD_ROOT%{include_dir}/memcached.cfg
 
 %clean
 rm -rf $RPM_BUILD_ROOT
