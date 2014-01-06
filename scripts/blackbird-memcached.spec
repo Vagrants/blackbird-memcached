@@ -3,7 +3,7 @@
 %define name blackbird-memcached
 %define version 0.1.1
 %define unmangled_version %{version}
-%define release 2%{dist}
+%define release 3%{dist}
 %define include_dir /etc/blackbird/conf.d
 %define plugins_dir /opt/blackbird/plugins
 
@@ -48,9 +48,12 @@ rm -rf $RPM_BUILD_ROOT
 %dir %{include_dir}
 %config(noreplace) %{include_dir}/memcached.cfg
 %dir %{plugins_dir}
-%{plugins_dir}/*
+%{plugins_dir}/memcached.*
 
 %changelog
+* Mon Jan 06 2014 ARASHI, Jumpei <jumpei.arashi@arashike.com> - 0.1.1-3
+- reduce file in %files "*" -> "memcached.*"
+
 * Mon Jan 06 2014 ARASHI, Jumpei <jumpei.arashi@arashike.com> - 0.1.1-2
 - deploy /opt/blackbird/plugins/memcached.py
 
