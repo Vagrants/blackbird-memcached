@@ -3,8 +3,9 @@
 %define name blackbird-memcached
 %define version 0.1.1
 %define unmangled_version %{version}
-%define release 1%{dist}
+%define release 2%{dist}
 %define include_dir /etc/blackbird/conf.d
+%define plugins_dir /opt/blackbird/plugins
 
 Summary: Get stats of memcached for blackbird by using "stats".
 Name: %{name}
@@ -35,7 +36,9 @@ python setup.py build
 python setup.py install --root=$RPM_BUILD_ROOT --record=INSTALLED_FILES
 
 install -dm 0755 $RPM_BUILD_ROOT%{include_dir}
+install -dm 0755 $RPM_BUILD_ROOT%{plugins_dir}
 install -p -m 0644 scripts/memcached.cfg $RPM_BUILD_ROOT%{include_dir}/memcached.cfg
+install -p -m 0644 memcached.py $RPM_BUILD_ROOT%{plugins_dir}/memcached.py
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -44,8 +47,13 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %dir %{include_dir}
 %config(noreplace) %{include_dir}/memcached.cfg
+%dir %{plugins_dir}
+%{plugins_dir}/*
 
 %changelog
+* Mon Jan 06 2014 ARASHI, Jumpei <jumpei.arashi@arashike.com> - 0.1.1-2
+- deploy /opt/blackbird/plugins/memcached.py
+
 * Fri Nov 27 2013 ARASHI, Jumpei <jumpei.arashi@arashike.com> - 0.1.1-1
 - Include /etc/blackbird/conf.d/memcached.cfg
 
