@@ -222,7 +222,7 @@ class Validator(base.ValidatorBase):
             "host = ipaddress(default='127.0.0.1')",
             "port = integer(0, 65535, default=11211)",
             "timeout = integer(default=10)",
-            "hostname = string(default={0})".format(self.gethostname()),
+            "hostname = string(default={0})".format(self.detect_hostname()),
             "profile_include_conn_establish = boolean(default=False)",
         )
         return self.__spec
