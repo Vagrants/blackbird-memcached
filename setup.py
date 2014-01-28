@@ -8,7 +8,7 @@ except ImportError:
 
 setup(
     name='blackbird-memcached',
-    version='0.1.2',
+    version='0.1.3',
     description=(
         'Get stats of memcached for blackbird by using "stats".'
     ),

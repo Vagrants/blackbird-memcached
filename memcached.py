@@ -17,7 +17,7 @@ class ConcreteJob(base.JobBase):
     def __init__(self, options, queue=None, logger=None):
         super(ConcreteJob, self).__init__(options, queue, logger)
 
-    def looped_method(self):
+    def build_items(self):
         """
         Get stats data of memcached by using telnet.
         """
