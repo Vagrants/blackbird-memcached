@@ -51,7 +51,7 @@ rm -rf $RPM_BUILD_ROOT
 %{plugins_dir}/memcached.*
 
 %changelog
-* Mon Jan 06 2014 ARASHI, Jumpei <jumpei.arashi@arashike.com> - 0.1.3-1
+* Tue Jan 27 2014 ARASHI, Jumpei <jumpei.arashi@arashike.com> - 0.1.3-1
 - change method name(main loop) "looped_method" -> "build_items"
 
 * Fri Jan 10 2014 makocchi <makocchi@gmial.com> - 0.1.2-1
