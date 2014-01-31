@@ -17,6 +17,18 @@ class ConcreteJob(base.JobBase):
     def __init__(self, options, queue=None, logger=None):
         super(ConcreteJob, self).__init__(options, queue, logger)
 
+        self.invalid_key_list = set(
+            [
+                'memcached.pid',
+                'memcached.time',
+                'memcached.libevent',
+                'memcached.pointer_size',
+                'memcached.hash_power_level',
+                'memcached.hash_bytes',
+                'memcached.reclaimed',
+            ]
+        )
+
     def build_items(self):
         """
         Get stats data of memcached by using telnet.
@@ -41,12 +53,17 @@ class ConcreteJob(base.JobBase):
             line = line.split()
             key = line[1]
             value = line[2]
-            self._enqueue(key, value, self.options['hostname'])
-            self.logger.debug(
-                ('Inserted to queue memcached.{key}:{value}'
-                 ''.format(key=key, value=value)
-                 )
+            item = MemcachedItem(
+                key=key,
+                value=value,
+                host=self.options['hostname']
             )
+            if self.enqueue(item, self.queue):
+                self.logger.debug(
+                    ('Inserted to queue memcached.{key}:{value}'
+                     ''.format(key=key, value=value)
+                     )
+                )
 
         # send response time
         key = 'set_response_time'
