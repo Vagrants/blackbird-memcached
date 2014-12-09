@@ -236,7 +236,7 @@ class Validator(base.ValidatorBase):
     def spec(self):
         self.__spec = (
             "[{0}]".format(__name__),
-            "host = ipaddress(default='127.0.0.1')",
+            "host = string(default='127.0.0.1')",
             "port = integer(0, 65535, default=11211)",
             "timeout = integer(default=10)",
             "hostname = string(default={0})".format(self.detect_hostname()),

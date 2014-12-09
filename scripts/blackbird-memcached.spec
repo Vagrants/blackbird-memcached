@@ -1,7 +1,7 @@
 %{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
 %define name blackbird-memcached
-%define version 0.1.3
+%define version 0.1.4
 %define unmangled_version %{version}
 %define release 1%{dist}
 %define include_dir /etc/blackbird/conf.d
@@ -51,6 +51,9 @@ rm -rf $RPM_BUILD_ROOT
 %{plugins_dir}/memcached.*
 
 %changelog
+* Tue Dec 9 2014 ARASHI, Jumpei <jumpei.arashi@arashike.com> - 0.1.4-1
+- Get rid of "ipaddress" validator. We use "string" validator instead of "ipaddress".
+
 * Tue Jan 27 2014 ARASHI, Jumpei <jumpei.arashi@arashike.com> - 0.1.3-1
 - change method name(main loop) "looped_method" -> "build_items"
 
