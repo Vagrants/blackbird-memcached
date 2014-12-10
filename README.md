@@ -4,6 +4,7 @@ blackbird-memcached
 Get result of following command(not shell command) result.
 
 * stats
+* stats settings
 
 config file
 -----------
