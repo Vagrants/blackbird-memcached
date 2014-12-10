@@ -21,10 +21,14 @@ Vendor: ARASHI, Jumpei <jumpei.arashi@arashike.com>
 Packager: ARASHI, Jumpei <jumpei.arashi@arashike.com>
 Requires: blackbird
 Url: https://github.com/Vagrants/blackbird-memcached
-BuildRequires:  python-setuptools
+BuildRequires:  python-devel
 
 %description
-UNKNOWN
+Project Info
+============
+
+* Project Page: https://github.com/Vagrants/blackbird-memcached
+
 
 %prep
 %setup -n %{name}-%{unmangled_version} -n %{name}-%{unmangled_version}
@@ -37,7 +41,7 @@ python setup.py install --root=$RPM_BUILD_ROOT --record=INSTALLED_FILES
 
 install -dm 0755 $RPM_BUILD_ROOT%{include_dir}
 install -dm 0755 $RPM_BUILD_ROOT%{plugins_dir}
-install -p -m 0644 scripts/memcached.cfg $RPM_BUILD_ROOT%{include_dir}/memcached.cfg
+install -p -m 0644 memcached.cfg $RPM_BUILD_ROOT%{include_dir}/memcached.cfg
 install -p -m 0644 memcached.py $RPM_BUILD_ROOT%{plugins_dir}/memcached.py
 
 %clean
