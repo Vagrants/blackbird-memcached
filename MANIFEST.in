@@ -1,2 +1,3 @@
 include memcached.py
+include memcached.cfg
 graft scripts
