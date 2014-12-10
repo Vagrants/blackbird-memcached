@@ -1,8 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# pylint: disable=protected-access,too-few-public-methods
 u"""\"memcached-tool 127.0.0.1:11211 stats\" to ZabbixServer."""
 
+__VERSION__ = '0.1.4'
+
 import telnetlib
+import socket
 from datetime import datetime
 
 from blackbird.plugins import base
@@ -17,96 +21,114 @@ class ConcreteJob(base.JobBase):
     def __init__(self, options, queue=None, logger=None):
         super(ConcreteJob, self).__init__(options, queue, logger)
 
-        self.invalid_key_list = set(
-            [
-                'memcached.pid',
-                'memcached.time',
-                'memcached.libevent',
-                'memcached.pointer_size',
-                'memcached.hash_power_level',
-                'memcached.hash_bytes',
-                'memcached.reclaimed',
-            ]
-        )
-
     def build_items(self):
         """
         Get stats data of memcached by using telnet.
         """
 
-        conn = telnetlib.Telnet()
-        conn.open(
-            host=self.options['host'],
-            port=self.options['port'],
-            timeout=self.options['timeout']
-        )
+        # ping item
+        self._ping()
 
+        # send stats data
+        self._get_stats()
+
+        # send setting value
+        self._get_settings()
+
+        # send response time
+        self._response_time()
+
+    def _ping(self):
+        """
+        send ping item
+        """
+        self._enqueue('blackbird.memcached.ping', 1)
+        self._enqueue('blackbird.memcached.version', __VERSION__)
+
+    def _get_stats(self):
+        """
+        get memcached stats
+        """
+        conn = self._connect()
         conn.write('stats\r\n')
         result = conn.read_until('END').splitlines()
         conn.close()
 
-        # send stats data
         for line in result:
             if line.startswith('END'):
                 break
 
             line = line.split()
-            key = line[1]
+            key = 'memcached.{0}'.format(line[1])
             value = line[2]
-            item = MemcachedItem(
-                key=key,
-                value=value,
-                host=self.options['hostname']
+            self._enqueue(key, value)
+
+    def _get_settings(self):
+        """
+        get memcached setting value
+        """
+        conn = self._connect()
+        conn.write('stats settings\r\n')
+        result = conn.read_until('END').splitlines()
+        conn.close()
+
+        for line in result:
+            if line.startswith('END'):
+                break
+
+            line = line.split()
+            key = 'memcached.settings.{0}'.format(line[1])
+            value = line[2]
+            self._enqueue(key, value)
+
+    def _response_time(self):
+        """
+        get response time
+        """
+        self._enqueue(
+            'memcached.set_response_time',
+            self._set_command_response_time()
+        )
+        self._enqueue(
+            'memcached.get_response_time',
+            self._get_command_response_time()
+        )
+
+    def _connect(self):
+        """
+        connect to memcached
+        """
+        conn = telnetlib.Telnet()
+
+        try:
+            conn.open(
+                host=self.options['host'],
+                port=self.options['port'],
+                timeout=self.options['timeout']
             )
-            if self.enqueue(item, self.queue):
-                self.logger.debug(
-                    ('Inserted to queue memcached.{key}:{value}'
-                     ''.format(key=key, value=value)
-                     )
-                )
+        except socket.error as err:
+            raise base.BlackbirdPluginError(
+                'connect failed. {0}'.format(err)
+            )
 
-        # send response time
-        key = 'set_response_time'
-        value = self._set_command_response_time(
-            host=self.options['host'],
-            port=self.options['port'],
-            timeout=self.options['timeout'],
-            profile_include_conn_establish=
-            self.options['profile_include_conn_establish']
-        )
-        self._enqueue(key, value, self.options['hostname'])
-        self.logger.debug(
-            ('Inserted to queue memcached.{key}:{value}'
-             ''.format(key=key, value=value)
-             )
-        )
+        return conn
 
-        key = 'get_response_time'
-        value = self._get_command_response_time(
-            host=self.options['host'],
-            port=self.options['port'],
-            timeout=self.options['timeout'],
-            profile_include_conn_establish=
-            self.options['profile_include_conn_establish']
-        )
-        self._enqueue(key, value, self.options['hostname'])
-        self.logger.debug(
-            ('Inserted to queue memcached.{key}:{value}'
-             ''.format(key=key, value=value)
-             )
-        )
-
-    def _enqueue(self, item_key, item_value, item_host):
+    def _enqueue(self, key, value):
+        """
+        insert MemcachedItem to queue
+        """
         item = MemcachedItem(
-            key=item_key,
-            value=item_value,
-            host=item_host
+            key=key,
+            value=value,
+            host=self.options['hostname']
         )
         self.queue.put(item, block=False)
+        self.logger.debug(
+            'Inserted to queue {key}:{value}'
+            ''.format(key=key, value=value)
+        )
 
-    def _set_command_response_time(self, host, port, timeout=10,
-                                   key='__zabbix_check',
-                                   profile_include_conn_establish=False):
+    def _set_command_response_time(self, key='__zabbix_check'):
         """
         Get "set" command response time.
         """
@@ -120,26 +142,16 @@ class ConcreteJob(base.JobBase):
             ''.format(key=key, length=length)
         )
 
-        if profile_include_conn_establish:
+        if self.options['profile_include_conn_establish']:
             with base.Timer() as timer:
-                conn = telnetlib.Telnet()
-                conn.open(
-                    host=host,
-                    port=port,
-                    timeout=timeout
-                )
+                conn = self._connect()
                 conn.write(data)
                 conn.write(value)
                 data = conn.read_some()
                 conn.close()
 
         else:
-            conn = telnetlib.Telnet()
-            conn.open(
-                host=host,
-                port=port,
-                timeout=timeout
-            )
+            conn = self._connect()
             with base.Timer() as timer:
                 conn.write(data)
                 conn.write(value)
@@ -148,39 +160,25 @@ class ConcreteJob(base.JobBase):
 
         if 'STORED' in data:
             return timer.sec
-        elif 'ERROR' in data:
-            return None
         else:
-            return None
+            return 0
 
-    def _get_command_response_time(self, host, port, timeout=10,
-                                   key='__zabbix_check',
-                                   profile_include_conn_establish=False):
+    def _get_command_response_time(self, key='__zabbix_check'):
         """
         Get "get" command response time.
         """
 
         data = 'get {0}\r\n'.format(key)
 
-        if profile_include_conn_establish:
+        if self.options['profile_include_conn_establish']:
             with base.Timer() as timer:
-                conn = telnetlib.Telnet()
-                conn.open(
-                    host=host,
-                    port=port,
-                    timeout=timeout
-                )
+                conn = self._connect()
                 conn.write(data)
                 data = conn.read_some()
                 conn.close()
 
         else:
-            conn = telnetlib.Telnet()
-            conn.open(
-                host=host,
-                port=port,
-                timeout=timeout
-            )
+            conn = self._connect()
             with base.Timer() as timer:
                 conn.write(data)
                 data = conn.read_some()
@@ -189,7 +187,7 @@ class ConcreteJob(base.JobBase):
         if not 'ERROR' in data:
             return timer.sec
         else:
-            return None
+            return 0
 
 
 class MemcachedItem(base.ItemBase):
@@ -217,7 +215,7 @@ class MemcachedItem(base.ItemBase):
         {host:host, key:key1, value:value1, clock:clock}
         """
 
-        self.__data['key'] = 'memcached.{0}'.format(self.key)
+        self.__data['key'] = self.key
         self.__data['value'] = self.value
         self.__data['host'] = self.host
         self.__data['clock'] = self.clock
@@ -246,21 +244,29 @@ class Validator(base.ValidatorBase):
 
 
 if __name__ == '__main__':
+    # pylint: disable=pointless-string-statement
+    """
+    For debug
+
+    $ python memcached.py
+    "set" command response time: 0.000669sec
+    "get" command response time: 0.000484sec
+    """
+
     OPTIONS = {
         'host': '127.0.0.1',
         'port': 11211,
-        'timeout': 1
+        'timeout': 1,
+        'profile_include_conn_establish': True
     }
     MEMCACHED_JOB = ConcreteJob(options=OPTIONS)
-    RESULT = MEMCACHED_JOB._set_command_response_time(
-        host=OPTIONS['host'],
-        port=OPTIONS['port'],
-        timeout=OPTIONS['timeout']
+
+    print (
+        '"set" command response time: {0}sec'
+        ''.format(MEMCACHED_JOB._set_command_response_time())
     )
-    print('"set" command response time: {0}sec'.format(RESULT))
-    RESULT = MEMCACHED_JOB._get_command_response_time(
-        host=OPTIONS['host'],
-        port=OPTIONS['port'],
-        timeout=OPTIONS['timeout']
+
+    print (
+        '"get" command response time: {0}sec'
+        ''.format(MEMCACHED_JOB._get_command_response_time())
     )
-    print('"get" command response time: {0}sec'.format(RESULT))
