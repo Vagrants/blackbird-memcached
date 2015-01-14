@@ -49,9 +49,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %files -f INSTALLED_FILES
 %defattr(-,root,root)
-%dir %{include_dir}
 %config(noreplace) %{include_dir}/memcached.cfg
-%dir %{plugins_dir}
 %{plugins_dir}/memcached.*
 
 %changelog
