@@ -13,7 +13,7 @@ def read(fname):
 
 setup(
     name='blackbird-memcached',
-    version='0.1.4',
+    version='0.1.5',
     description=(
         'Get stats of memcached for blackbird by using "stats".'
     ),

@@ -3,7 +3,7 @@
 # pylint: disable=protected-access,too-few-public-methods
 u"""\"memcached-tool 127.0.0.1:11211 stats\" to ZabbixServer."""
 
-__VERSION__ = '0.1.4'
+__VERSION__ = '0.1.5'
 
 import telnetlib
 import socket
